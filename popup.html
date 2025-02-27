@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>AI页面分析器</title>
+  <style>
+    body {
+      width: 350px;
+      font-family: Arial, sans-serif;
+      padding: 10px;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    select, button, input, textarea {
+      padding: 8px;
+      margin: 5px 0;
+    }
+    button {
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #3367d6;
+    }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 10px;
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 10px;
+      white-space: pre-wrap;
+    }
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border-left-color: #09f;
+      animation: spin 1s linear infinite;
+      display: none;
+      margin: 10px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 10px;
+    }
+    .tab {
+      padding: 8px 15px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      margin-right: 5px;
+    }
+    .tab.active {
+      border: 1px solid #ddd;
+      border-bottom-color: white;
+      border-radius: 4px 4px 0 0;
+      margin-bottom: -1px;
+      background-color: #f9f9f9;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    #chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 350px;
+    }
+    #chat-messages {
+      flex-grow: 1;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-bottom: 10px;
+      background-color: #f9f9f9;
+    }
+    .message {
+      margin-bottom: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      max-width: 80%;
+    }
+    .user-message {
+      background-color: #DCF8C6;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+    .ai-message {
+      background-color: #FFFFFF;
+      align-self: flex-start;
+    }
+    #chat-input-container {
+      display: flex;
+      gap: 5px;
+    }
+    #chat-input {
+      flex-grow: 1;
+      resize: none;
+    }
+    /* 新增样式 */
+    .history-item {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #fff;
+    }
+    .history-item:hover {
+      background-color: #f5f5f5;
+    }
+    .history-item button {
+      margin-top: 5px;
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+    #copy-btn {
+      margin-top: 10px;
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+    #clear-history-btn {
+      margin-top: 10px;
+      background-color: #dc3545;
+    }
+    #clear-history-btn:hover {
+      background-color: #c82333;
+    }
+    #history-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>AI页面分析器</h2>
+    
+    <div class="tabs">
+      <div class="tab active" data-tab="settings">设置</div>
+      <div class="tab" data-tab="analyzer">分析器</div>
+      <div class="tab" data-tab="chat">对话</div>
+      <div class="tab" data-tab="history">历史</div>
+    </div>
+    
+    <!-- 设置标签页 -->
+    <div class="tab-content active" id="settings-tab">
+      <label for="api-select">选择AI服务:</label>
+      <select id="api-select">
+        <option value="ollama">Ollama</option>
+        <option value="openroute">OpenRoute</option>
+        <option value="custom">自定义服务</option>
+      </select>
+      
+      <div id="ollama-settings">
+        <label for="ollama-url">Ollama服务URL:</label>
+        <input type="text" id="ollama-url" placeholder="http://localhost:11434" value="http://localhost:11434">
+        
+        <label for="ollama-model">Ollama模型:</label>
+        <input type="text" id="ollama-model" placeholder="llama3" value="llama3">
+      </div>
+      
+      <div id="openroute-settings" style="display:none;">
+        <label for="openroute-key">OpenRoute API密钥:</label>
+        <input type="password" id="openroute-key" placeholder="API密钥">
+        
+        <label for="openroute-model">OpenRoute模型:</label>
+        <input type="text" id="openroute-model" placeholder="gpt-3.5-turbo" value="gpt-3.5-turbo">
+      </div>
+
+      <div id="custom-settings" style="display:none;">
+        <label for="custom-url">API端点URL:</label>
+        <input type="text" id="custom-url" placeholder="https://api.example.com/v1/chat">
+        
+        <label for="custom-key">API密钥:</label>
+        <input type="password" id="custom-key" placeholder="API密钥">
+        
+        <label for="custom-model">模型名称:</label>
+        <input type="text" id="custom-model" placeholder="模型名称">
+        
+        <label for="custom-headers">自定义请求头:</label>
+        <textarea id="custom-headers" rows="3" placeholder='{"Authorization": "Bearer YOUR_KEY"}'></textarea>
+        
+        <label for="custom-body-template">请求体模板:</label>
+        <textarea id="custom-body-template" rows="5" placeholder='{"model": "$model","messages": [{"role": "user","content": "$prompt"}]}'></textarea>
+        
+        <label for="custom-response-path">响应内容路径:</label>
+        <input type="text" id="custom-response-path" placeholder="choices[0].message.content" value="choices[0].message.content">
+      </div>
+      
+      <button id="save-settings-btn">保存设置</button>
+    </div>
+    
+    <!-- 分析器标签页 -->
+    <div class="tab-content" id="analyzer-tab">
+      <label for="analysis-type">分析类型:</label>
+      <select id="analysis-type">
+        <option value="summary">页面摘要</option>
+        <option value="sentiment">情感分析</option>
+        <option value="keywords">关键词提取</option>
+        <option value="scripts">脚本分析</option>
+        <option value="security">安全检查</option>
+        <option value="error">错误分析</option>
+        <option value="attachments">附件和表格</option>
+        <option value="custom">自定义分析</option>
+      </select>
+      
+      <div id="custom-prompt-container" style="display:none;">
+        <label for="custom-prompt">自定义提示词:</label>
+        <textarea id="custom-prompt" rows="3" placeholder="输入自定义分析提示词..."></textarea>
+      </div>
+      
+      <button id="analyze-btn">分析当前页面</button>
+      
+      <div class="spinner" id="loading-spinner"></div>
+      
+      <div id="result-container">
+        <h3>分析结果:</h3>
+        <div id="result">点击"分析当前页面"按钮开始分析。</div>
+        <button id="copy-btn">复制结果</button>
+      </div>
+    </div>
+    
+    <!-- 对话标签页 -->
+    <div class="tab-content" id="chat-tab">
+      <div id="chat-container">
+        <div id="chat-messages">
+          <div class="message ai-message">你好！我是AI助手，可以帮你分析当前页面的内容。</div>
+        </div>
+        <div id="chat-input-container">
+          <textarea id="chat-input" rows="2" placeholder="输入你的问题..."></textarea>
+          <button id="send-chat-btn">发送</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 历史标签页 -->
+    <div class="tab-content" id="history-tab">
+      <h3>分析历史记录</h3>
+      <div id="history-list"></div>
+      <button id="clear-history-btn">清除历史</button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html> 
